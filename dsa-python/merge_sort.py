@@ -1,32 +1,41 @@
-def merge_sort(A):
-    if len(A) <= 1:
-        return A
-    
-    mid = len(A) // 2
-    left = merge_sort(A[:mid])
-    right = merge_sort(A[mid:])
-    
+"""Stable merge sort that returns a new sorted list."""
+
+from typing import TypeVar
+
+T = TypeVar("T")
+
+
+def merge_sort(values: list[T]) -> list[T]:
+    if len(values) <= 1:
+        return values.copy()
+    middle = len(values) // 2
+    left = merge_sort(values[:middle])
+    right = merge_sort(values[middle:])
     return merge(left, right)
 
-def merge(left, right):
-    merged = []
-    i = 0
-    j = 0
-    
-    while i < len(left) and j < len(right):
-        if left[i] <= right[j]:
-            merged.append(left[i])
-            i += 1
+
+def merge(left: list[T], right: list[T]) -> list[T]:
+    merged: list[T] = []
+    left_index = right_index = 0
+
+    while left_index < len(left) and right_index < len(right):
+        if left[left_index] <= right[right_index]:
+            merged.append(left[left_index])
+            left_index += 1
         else:
-            merged.append(right[j])
-            j += 1
-    
-    merged.extend(left[i:])
-    merged.extend(right[j:])
-    
+            merged.append(right[right_index])
+            right_index += 1
+
+    merged.extend(left[left_index:])
+    merged.extend(right[right_index:])
     return merged
 
-A = [4, 5, 1, 10, 3, 5]
-print(merge_sort(A))
+
+def main() -> None:
+    values = [4, 5, 1, 10, 3, 5]
+    print(merge_sort(values))
+    print("Original list:", values)
 
 
+if __name__ == "__main__":
+    main()

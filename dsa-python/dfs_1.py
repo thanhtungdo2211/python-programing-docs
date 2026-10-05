@@ -1,142 +1,87 @@
+"""Iterative depth-first search over a fixed-capacity adjacency matrix."""
+
+
 class Vertex:
-    def __init__(self, label):
+    def __init__(self, label: str) -> None:
         self.label = label
-        self.visited = False
+
 
 class MyGraphDFS:
-    def __init__(self):
-        self.max_vertices = 20
-        self.vertex_list = [None] * self.max_vertices
-        self.adj_matrix = [[0 for _ in range(self.max_vertices)] 
-                          for _ in range(self.max_vertices)]
-        self.vertex_count = 0
-        self.stack = []  # Python list làm stack
-    
-    def add_vertex(self, label):
-        """Thêm đỉnh mới vào đồ thị"""
-        self.vertex_list[self.vertex_count] = Vertex(label)
-        self.vertex_count += 1
-    
-    def add_edge(self, start, end):
-        """Thêm cạnh giữa hai đỉnh (đồ thị vô hướng)"""
+    def __init__(self, max_vertices: int = 20) -> None:
+        if max_vertices < 1:
+            raise ValueError("max_vertices must be positive")
+        self.max_vertices = max_vertices
+        self.vertex_list: list[Vertex] = []
+        self.adj_matrix = [[0] * max_vertices for _ in range(max_vertices)]
+
+    @property
+    def vertex_count(self) -> int:
+        return len(self.vertex_list)
+
+    def add_vertex(self, label: str) -> None:
+        if self.vertex_count >= self.max_vertices:
+            raise ValueError("graph has reached its vertex capacity")
+        self.vertex_list.append(Vertex(label))
+
+    def add_edge(self, start: int, end: int) -> None:
+        self._validate_vertex(start)
+        self._validate_vertex(end)
         self.adj_matrix[start][end] = 1
         self.adj_matrix[end][start] = 1
-    
-    def display_vertex(self, v):
-        """Hiển thị đỉnh"""
-        print(self.vertex_list[v].label, end=" ")
-    
-    def dfs(self):
-        """Thuật toán DFS sử dụng stack"""
-        # Bắt đầu từ đỉnh 0
-        self.vertex_list[0].visited = True
-        self.display_vertex(0)
-        self.stack.append(0)
-        
-        while self.stack:
-            # Lấy đỉnh kề chưa thăm của đỉnh trên đỉnh stack
-            v = self.get_adj_unvisited_vertex(self.stack[-1])  # peek()
-            if v == -1:
-                self.stack.pop()
-            else:
-                self.vertex_list[v].visited = True
-                self.display_vertex(v)
-                self.stack.append(v)
-        
-        # Reset trạng thái visited cho lần duyệt tiếp theo
-        for j in range(self.vertex_count):
-            self.vertex_list[j].visited = False
-    
-    def get_adj_unvisited_vertex(self, v):
-        """Tìm đỉnh kề chưa thăm đầu tiên của đỉnh v"""
-        for j in range(self.vertex_count):
-            if (self.adj_matrix[v][j] == 1 and 
-                not self.vertex_list[j].visited):
-                return j
-        return -1
-    
-    def display_matrix(self):
-        """Hiển thị ma trận kề (thêm để debug)"""
-        print("\nMa trận kề:")
-        print("  ", end="")
-        for i in range(self.vertex_count):
-            print(f"{self.vertex_list[i].label} ", end="")
-        print()
-        
-        for i in range(self.vertex_count):
-            print(f"{self.vertex_list[i].label} ", end="")
-            for j in range(self.vertex_count):
-                print(f"{self.adj_matrix[i][j]} ", end="")
-            print()
-    
-    def dfs_from_vertex(self, start_vertex):
-        """DFS bắt đầu từ đỉnh chỉ định"""
-        # Reset visited
-        for j in range(self.vertex_count):
-            self.vertex_list[j].visited = False
-        
-        self.vertex_list[start_vertex].visited = True
-        self.display_vertex(start_vertex)
-        self.stack = [start_vertex]
-        
-        while self.stack:
-            v = self.get_adj_unvisited_vertex(self.stack[-1])
-            if v == -1:
-                self.stack.pop()
-            else:
-                self.vertex_list[v].visited = True
-                self.display_vertex(v)
-                self.stack.append(v)
 
-# Chương trình chính
+    def _validate_vertex(self, vertex: int) -> None:
+        if not 0 <= vertex < self.vertex_count:
+            raise IndexError("vertex is out of range")
+
+    def display_matrix(self) -> None:
+        labels = [vertex.label for vertex in self.vertex_list]
+        print("Adjacency matrix:")
+        print("   " + " ".join(labels))
+        for index, label in enumerate(labels):
+            row = " ".join(map(str, self.adj_matrix[index][: self.vertex_count]))
+            print(f"{label}: {row}")
+
+    def dfs(self, start_vertex: int = 0) -> list[str]:
+        if self.vertex_count == 0:
+            return []
+        self._validate_vertex(start_vertex)
+
+        visited = [False] * self.vertex_count
+        result: list[str] = []
+        stack = [start_vertex]
+        while stack:
+            vertex = stack.pop()
+            if visited[vertex]:
+                continue
+            visited[vertex] = True
+            result.append(self.vertex_list[vertex].label)
+            # Reverse the push order so smaller neighbor indices are visited first.
+            for neighbor in range(self.vertex_count - 1, -1, -1):
+                if self.adj_matrix[vertex][neighbor] and not visited[neighbor]:
+                    stack.append(neighbor)
+        return result
+
+
+def main() -> None:
+    graph = MyGraphDFS()
+    for label in "01234":
+        graph.add_vertex(label)
+    for start, end in ((0, 1), (0, 2), (0, 3), (1, 2), (2, 4)):
+        graph.add_edge(start, end)
+
+    graph.display_matrix()
+    for start in range(graph.vertex_count):
+        print(
+            f"DFS from {graph.vertex_list[start].label}: {' '.join(graph.dfs(start))}"
+        )
+
+    complex_graph = MyGraphDFS()
+    for label in "ABCDEF":
+        complex_graph.add_vertex(label)
+    for start, end in ((0, 1), (0, 2), (1, 3), (1, 4), (2, 5), (3, 4)):
+        complex_graph.add_edge(start, end)
+    print("Complex graph DFS:", " ".join(complex_graph.dfs()))
+
+
 if __name__ == "__main__":
-    # Tạo đồ thị giống như trong Java
-    g = MyGraphDFS()
-    
-    # Thêm các đỉnh
-    g.add_vertex('0')
-    g.add_vertex('1')
-    g.add_vertex('2')
-    g.add_vertex('3')
-    g.add_vertex('4')
-    
-    # Thêm các cạnh (đồ thị vô hướng)
-    g.add_edge(0, 1)
-    g.add_edge(0, 2)
-    g.add_edge(0, 3)
-    g.add_edge(1, 2)
-    g.add_edge(2, 4)
-    
-    print("Cấu trúc đồ thị:")
-    g.display_matrix()
-    
-    print("\nDFS traversal starting from vertex 0:")
-    g.dfs()
-    
-    print("\n\nDFS từ các đỉnh khác nhau:")
-    for i in range(g.vertex_count):
-        print(f"\nDFS từ đỉnh {g.vertex_list[i].label}: ", end="")
-        g.dfs_from_vertex(i)
-    
-    print("\n")
-    
-    # Ví dụ thêm với đồ thị phức tạp hơn
-    print("\n=== ĐỒNG THỊ PHỨC TẠP HỞN ===")
-    g2 = MyGraphDFS()
-    
-    # Thêm đỉnh với ký tự
-    vertices = ['A', 'B', 'C', 'D', 'E', 'F']
-    for vertex in vertices:
-        g2.add_vertex(vertex)
-    
-    # Tạo đồ thị dạng cây + một số cạnh thêm
-    edges = [(0, 1), (0, 2), (1, 3), (1, 4), (2, 5), (3, 4)]
-    for start, end in edges:
-        g2.add_edge(start, end)
-    
-    print("Cấu trúc đồ thị 2:")
-    g2.display_matrix()
-    
-    print(f"\nDFS traversal từ A: ", end="")
-    g2.dfs_from_vertex(0)
-    print()
+    main()

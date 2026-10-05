@@ -1,57 +1,43 @@
-# def dfs(graph, start, visited=None):
-#     if visited is None:
-#         visited = set()
-#     visited.add(start)
-#     print(start)
-#     for neighbor in graph.get(start, []):
-#         if neighbor not in visited:
-#             dfs(graph, neighbor, visited)
-#     return visited
-
-# # Ví dụ sử dụng:
-# if __name__ == "__main__":
-#     graph = {
-#         'A': ['B', 'C'],
-#         'B': ['D', 'E'],
-#         'C': ['F'],
-#         'D': [],
-#         'E': ['F'],
-#         'F': []
-#     }
-#     dfs(graph, 'A')
-
-def dfsRec(adj, visited, s, res):
-    visited[s] = True
-    res.append(s)
-
-    # Recursively visit all adjacent vertices that are not visited yet
-    for i in range(len(adj)):
-        if adj[s][i] == 1 and not visited[i]:
-            dfsRec(adj, visited, i, res)
+"""Recursive depth-first traversal over an adjacency matrix."""
 
 
-def DFS(adj):
-    visited = [False] * len(adj)
-    res = []
-    dfsRec(adj, visited, 0, res)  # Start DFS from vertex 0
-    return res
+def depth_first_search(adjacency: list[list[int]], start: int = 0) -> list[int]:
+    """Return vertices reachable from start, in depth-first order."""
+    vertex_count = len(adjacency)
+    if any(len(row) != vertex_count for row in adjacency):
+        raise ValueError("adjacency matrix must be square")
+    if vertex_count == 0:
+        return []
+    if not 0 <= start < vertex_count:
+        raise IndexError("start vertex is out of range")
+
+    visited = [False] * vertex_count
+    result: list[int] = []
+
+    def visit(vertex: int) -> None:
+        visited[vertex] = True
+        result.append(vertex)
+        for neighbor, connected in enumerate(adjacency[vertex]):
+            if connected and not visited[neighbor]:
+                visit(neighbor)
+
+    visit(start)
+    return result
 
 
-def add_edge(adj, s, t):
-    adj[s][t] = 1
-    adj[t][s] = 1  # Since it's an undirected graph
+def add_undirected_edge(adjacency: list[list[int]], first: int, second: int) -> None:
+    adjacency[first][second] = 1
+    adjacency[second][first] = 1
 
 
-# Driver code
-V = 5
-adj = [[0] * V for _ in range(V)]  # Adjacency matrix
+def main() -> None:
+    vertex_count = 5
+    adjacency = [[0] * vertex_count for _ in range(vertex_count)]
+    edges = [(1, 2), (1, 0), (2, 0), (2, 3), (2, 4)]
+    for first, second in edges:
+        add_undirected_edge(adjacency, first, second)
+    print(" ".join(map(str, depth_first_search(adjacency))))
 
-# Define the edges of the graph
-edges = [(1, 2), (1, 0), (2, 0), (2, 3), (2, 4)]
 
-# Populate the adjacency matrix with edges
-for s, t in edges:
-    add_edge(adj, s, t)
-
-res = DFS(adj)  # Perform DFS
-print(" ".join(map(str, res)))
+if __name__ == "__main__":
+    main()

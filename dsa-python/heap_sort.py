@@ -1,54 +1,37 @@
-def heapify(arr, n, i):
-    """
-    Hàm heapify để duy trì tính chất max heap.
-    Tham số:
-        arr: Mảng cần heapify
-        n: Kích thước của heap
-        i: Chỉ số của node gốc hiện tại
-    """
-    largest = i  # Khởi tạo largest là root
-    left = 2 * i + 1  # Left child
-    right = 2 * i + 2  # Right child
-
-    # Kiểm tra xem left child có lớn hơn root không
-    if left < n and arr[left] > arr[largest]:
-        largest = left
-
-    # Kiểm tra xem right child có lớn hơn root không
-    if right < n and arr[right] > arr[largest]:
-        largest = right
-
-    # Nếu largest không phải là root
-    if largest != i:
-        arr[i], arr[largest] = arr[largest], arr[i]  # Swap
-        # Gọi đệ quy để đảm bảo cây con cũng là max heap
-        heapify(arr, n, largest)
+"""In-place heap sort using a max heap."""
 
 
-def heap_sort(arr):
-    """
-    Thuật toán Heap Sort sử dụng max binary heap.
-    Tham số:
-        arr: Mảng cần sắp xếp
-    Trả về:
-        arr: Mảng đã sắp xếp
-    """
-    n = len(arr)
-
-    # Xây dựng max heap (tái cấu trúc mảng)
-    for i in range(n // 2 - 1, -1, -1):
-        heapify(arr, n, i)
-
-    # Trích xuất từng phần tử từ heap
-    for i in range(n - 1, 0, -1):
-        arr[i], arr[0] = arr[0], arr[i]  # Swap
-        heapify(arr, i, 0)
-    
-    return arr
+def _sift_down(values: list[int], heap_size: int, root: int) -> None:
+    while True:
+        largest = root
+        left = 2 * root + 1
+        right = 2 * root + 2
+        if left < heap_size and values[left] > values[largest]:
+            largest = left
+        if right < heap_size and values[right] > values[largest]:
+            largest = right
+        if largest == root:
+            return
+        values[root], values[largest] = values[largest], values[root]
+        root = largest
 
 
-# Example usage
+def heap_sort(values: list[int]) -> list[int]:
+    """Sort values in place and return the same list."""
+    heap_size = len(values)
+    for root in range(heap_size // 2 - 1, -1, -1):
+        _sift_down(values, heap_size, root)
+
+    for end in range(heap_size - 1, 0, -1):
+        values[0], values[end] = values[end], values[0]
+        _sift_down(values, end, 0)
+    return values
+
+
+def main() -> None:
+    values = [10, 7, 8, 9, 1, 5]
+    print("Sorted array:", heap_sort(values))
+
+
 if __name__ == "__main__":
-    sample_array = [10, 7, 8, 9, 1, 5]
-    sorted_array = heap_sort(sample_array)
-    print("Sorted array:", sorted_array)
+    main()

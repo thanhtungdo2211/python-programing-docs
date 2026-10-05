@@ -1,38 +1,51 @@
-import time
-import requests  # Yêu cầu phải cài requests bằng cách: pip install requests
+"""Measure serial I/O, threaded I/O, and pure Python CPU preprocessing.
 
-# Ví dụ I/O bound: tải nội dung từ một URL (chờ I/O mạng)
-def download_website(url):
-    response = requests.get(url)
-    return response.text
+The I/O adapter simulates a blocking SDK. No network or credentials are needed.
+"""
 
-# Tính thời gian tải nhiều trang web
-urls = ["https://example.com" for _ in range(10)]
-
-start_time = time.time()
-
-for url in urls:
-    download_website(url)
-
-end_time = time.time()
-
-print(f"Tổng thời gian thực hiện (I/O bound): {end_time - start_time:.2f} giây")
+from __future__ import annotations
 
 import time
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from typing import TypeVar
 
-# Ví dụ CPU bound: tính toán với các số lớn
-def intensive_computation(n):
-    total = 0
-    for i in range(1, n):
-        total += i**2
-    return total
+from parallelism import featurize, preprocess
 
-# Tính thời gian thực hiện nhiều phép tính toán
-start_time = time.time()
+T = TypeVar("T")
 
-for _ in range(10):
-    intensive_computation(10**6)
 
-end_time = time.time()
+def blocking_download(document_id: int) -> tuple[int, str]:
+    """Stand in for an object-store SDK configured with its own I/O timeout."""
+    time.sleep(0.02)
+    return document_id, f"Document {document_id} about embeddings and retrieval"
 
-print(f"Tổng thời gian thực hiện (CPU bound): {end_time - start_time:.2f} giây")
+
+def measure(label: str, operation: Callable[[], T]) -> T:
+    start = time.perf_counter()
+    result = operation()
+    print(f"{label}: {time.perf_counter() - start:.4f}s")
+    return result
+
+
+def main() -> None:
+    ids = range(8)
+    serial = measure("Serial blocking I/O", lambda: [blocking_download(i) for i in ids])
+    # A small fixed batch is appropriate here. Executor.map on Python 3.11
+    # eagerly submits input; use bounded submission for an unbounded source.
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        threaded = measure(
+            "Threaded blocking I/O", lambda: list(pool.map(blocking_download, ids))
+        )
+    serial_features = measure(
+        "Serial CPU work", lambda: [featurize(doc) for doc in serial]
+    )
+    process_features = measure("Process CPU work", lambda: list(preprocess(threaded)))
+    assert (
+        sorted(process_features, key=lambda item: item.document_id) == serial_features
+    )
+    print("Outputs match; process overhead dominates this deliberately small workload.")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,30 +1,35 @@
-from datetime import date
+"""Print a calendar month with Sunday as the first day of the week."""
+
 import calendar
 
-days_in_month = { 'January' : 31, 'February' : 28, 'March' : 31,
-'April' : 30, 'May' : 31, 'June' : 30,
-'July' : 31, 'August' : 31, 'September' : 30,
-'October' : 31, 'November' : 30, 'December' : 31 }
-key_array = ['January', 'February', 'March', 'April', 'May', 'June',]
-month_length = [31, 28, 31, 30, 31, 30, 31]
 
-def print_month(month, year):
-    idx = key_array.index(month)
-    day = 1
-    wd = date(year,idx + 1,day).weekday()
-    wd = (wd + 1) % 7
-    end = month_length[idx]
-    if calendar.isleap(year) and idx == 1:
-        end += 1        
-    print('{} {}'.format(month,year).center(20))
-    print('Su Mo Tu We Th Fr Sa')
-    print(' ' * wd, end='')
-    while day <= end:
-        print('{:2d} '.format(day), end='')
-        wd = (wd + 1) % 7
-        day += 1
-        if wd == 0: print()
+def print_month(month: int | str, year: int) -> None:
+    """Print a month selected by its number or full English name."""
+    if isinstance(month, str):
+        try:
+            month_number = list(calendar.month_name).index(month)
+        except ValueError as error:
+            raise ValueError(f"Unknown month name: {month!r}") from error
+    else:
+        month_number = month
+    if not 1 <= month_number <= 12:
+        raise ValueError("month must be between 1 and 12")
+
+    month_name = calendar.month_name[month_number]
+    weeks = calendar.Calendar(firstweekday=calendar.SUNDAY).monthdayscalendar(
+        year, month_number
+    )
+    print(f"{month_name} {year}".center(20))
+    print("Su Mo Tu We Th Fr Sa")
+    for week in weeks:
+        print(" ".join(f"{day:2}" if day else "  " for day in week).rstrip())
+
+
+def main() -> None:
+    print_month("February", 2020)
     print()
+    print_month("December", 2021)
 
-print_month('February', 2020)
-print_month('February', 2021)
+
+if __name__ == "__main__":
+    main()

@@ -1,51 +1,82 @@
-from abc import ABC, abstractmethod
+"""OCP: add retrieval ranking strategies without changing the RAG pipeline."""
 
-class Product:
-    def __init__(self, name, price):
-        self.name = name
-        self.price = price
+from __future__ import annotations
 
-# Violate Open-Closed Principle
-class Discount:
-    def apply_discount(self, product, discount_type):
-        if discount_type == 'percentage':
-            return product.price * 0.9
-        elif discount_type == 'fixed':
-            return product.price - 10
+import math
+from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import Protocol
 
-discount = Discount()
-product = Product('Keyboard', 100)
-print(discount.apply_discount(product, 'percentage'))
-print(discount.apply_discount(product, 'fixed'))
 
-# Don't violate Open-Closed Principle
+@dataclass(frozen=True, slots=True)
+class Candidate:
+    document_id: str
+    similarity: float
+    quality: float
 
-class Discount(ABC):
-    """
-    @abstractmethod là một decorator trong Python được sử dụng để đánh dấu 
-    một phương thức trong một lớp trừu tượng (abstract class) là phương thức trừu tượng.
-    Điều này có nghĩa là phương thức này phải được triển khai (override) trong các lớp con của lớp trừu tượng đó.
-    Nếu một lớp con không triển khai phương thức trừu tượng này, Python sẽ không cho phép tạo đối tượng từ lớp con đó.
-    """
-    @abstractmethod
-    def apply_discount(self, product):
-        pass
+    def __post_init__(self) -> None:
+        if not all(math.isfinite(value) for value in (self.similarity, self.quality)):
+            raise ValueError("ranking scores must be finite")
 
-class PercentageDiscount(Discount):
-    def apply_discount(self, product):
-        return product.price * 0.9
 
-class FixedDiscount(Discount):
-    def apply_discount(self, product):
-        return product.price - 10
+def coupled_rank(candidates: Sequence[Candidate], strategy: str) -> list[Candidate]:
+    """Anti-pattern: every new ranking strategy requires editing this branch."""
+    if strategy == "similarity":
+        return sorted(candidates, key=lambda item: item.similarity, reverse=True)
+    if strategy == "quality":
+        return sorted(candidates, key=lambda item: item.quality, reverse=True)
+    raise ValueError(f"unknown strategy: {strategy}")
 
-discount = PercentageDiscount()
-product = Product('Keyboard', 100)
-print(discount.apply_discount(product))
 
-"""
-Trong ví dụ vi phạm, khi thêm một loại chiết khấu mới, phải sửa đổi lớp Discount, vi phạm OCP.
+class RankingStrategy(Protocol):
+    def score(self, candidate: Candidate) -> float: ...
 
-Bằng cách sử dụng kế thừa, 
-có thể mở rộng thêm loại chiết khấu mà không cần sửa đổi lớp Discount.
-"""
+
+class SimilarityRanking:
+    def score(self, candidate: Candidate) -> float:
+        return candidate.similarity
+
+
+@dataclass(frozen=True, slots=True)
+class WeightedRanking:
+    similarity_weight: float = 0.7
+
+    def __post_init__(self) -> None:
+        if not 0 <= self.similarity_weight <= 1:
+            raise ValueError("weight must be between zero and one")
+
+    def score(self, candidate: Candidate) -> float:
+        return (
+            self.similarity_weight * candidate.similarity
+            + (1 - self.similarity_weight) * candidate.quality
+        )
+
+
+class RetrievalPipeline:
+    def __init__(self, ranking: RankingStrategy) -> None:
+        self._ranking = ranking
+
+    def select(
+        self, candidates: Sequence[Candidate], *, top_k: int = 2
+    ) -> list[Candidate]:
+        if top_k < 1:
+            raise ValueError("top_k must be positive")
+        scored = [
+            (self._ranking.score(candidate), candidate) for candidate in candidates
+        ]
+        if any(not math.isfinite(score) for score, _ in scored):
+            raise ValueError("strategy produced a non-finite score")
+        # An explicit tie-breaker keeps results reproducible across input order.
+        scored.sort(key=lambda item: (-item[0], item[1].document_id))
+        return [candidate for _, candidate in scored[:top_k]]
+
+
+def main() -> None:
+    candidates = [Candidate("doc-a", 0.95, 0.2), Candidate("doc-b", 0.85, 0.9)]
+    for strategy in (SimilarityRanking(), WeightedRanking(0.5)):
+        print(type(strategy).__name__, RetrievalPipeline(strategy).select(candidates))
+    # A learned reranker implements score(); the selection algorithm stays stable.
+
+
+if __name__ == "__main__":
+    main()

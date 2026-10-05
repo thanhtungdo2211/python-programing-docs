@@ -1,80 +1,74 @@
+"""A hash table that handles collisions with linked lists."""
+
+from collections.abc import Hashable
+
+
 class Node:
-    """Lớp Node đại diện cho một phần tử trong linked list."""
-    def __init__(self, key, value):
+    def __init__(self, key: Hashable, value: object) -> None:
         self.key = key
         self.value = value
-        self.next = None
+        self.next: Node | None = None
+
 
 class HashTable:
-    """Bảng băm sử dụng linked list để xử lý va chạm."""
-    def __init__(self, size=10):
+    def __init__(self, size: int = 10) -> None:
+        if size < 1:
+            raise ValueError("size must be positive")
         self.size = size
-        self.table = [None] * self.size  # Mỗi bucket là một linked list (ban đầu là None)
+        self.table: list[Node | None] = [None] * size
 
-    def _hash_function(self, key):
-        """Hàm băm trả về index dựa trên key."""
+    def _hash_function(self, key: Hashable) -> int:
         return hash(key) % self.size
 
-    def insert(self, key, value):
-        """Thêm hoặc cập nhật cặp key-value vào bảng băm."""
+    def insert(self, key: Hashable, value: object) -> None:
         index = self._hash_function(key)
         current = self.table[index]
-
-        # Kiểm tra xem key đã tồn tại trong linked list chưa
-        while current:
+        while current is not None:
             if current.key == key:
-                current.value = value  # Cập nhật giá trị nếu key tồn tại
+                current.value = value
                 return
             current = current.next
 
-        # Nếu key chưa tồn tại, thêm node mới vào đầu linked list
-        new_node = Node(key, value)
-        new_node.next = self.table[index]
-        self.table[index] = new_node
+        node = Node(key, value)
+        node.next = self.table[index]
+        self.table[index] = node
 
-    def get(self, key):
-        """Lấy giá trị từ key."""
-        index = self._hash_function(key)
-        current = self.table[index]
-
-        # Duyệt linked list để tìm key
-        while current:
+    def get(self, key: Hashable) -> object:
+        current = self.table[self._hash_function(key)]
+        while current is not None:
             if current.key == key:
                 return current.value
             current = current.next
+        raise KeyError(f"Key {key!r} not found")
 
-        raise KeyError(f"Key '{key}' không tồn tại")
-
-    def delete(self, key):
-        """Xóa cặp key-value khỏi bảng băm."""
+    def delete(self, key: Hashable) -> None:
         index = self._hash_function(key)
         current = self.table[index]
-        previous = None
-
-        # Duyệt linked list để tìm key
-        while current:
+        previous: Node | None = None
+        while current is not None:
             if current.key == key:
-                if previous:
-                    previous.next = current.next  # Bỏ qua node cần xóa
+                if previous is None:
+                    self.table[index] = current.next
                 else:
-                    self.table[index] = current.next  # Cập nhật head nếu xóa node đầu
+                    previous.next = current.next
                 return
-            previous = current
-            current = current.next
+            previous, current = current, current.next
+        raise KeyError(f"Key {key!r} not found")
 
-        raise KeyError(f"Key '{key}' không tồn tại")
 
-# Sử dụng HashTable với linked list
-ht = HashTable()
-ht.insert("apple", 10)
-ht.insert("banana", 20)
-ht.insert("orange", 30)
+def main() -> None:
+    table = HashTable(size=1)  # Force collisions to demonstrate linked chaining.
+    for key, value in (("apple", 10), ("banana", 20), ("orange", 30)):
+        table.insert(key, value)
+    print(table.get("apple"))
+    table.insert("apple", 100)
+    print("Updated apple:", table.get("apple"))
+    table.delete("banana")
+    try:
+        table.get("banana")
+    except KeyError as error:
+        print(error)
 
-print(ht.get("apple"))    # Output: 10
-print(ht.get("banana"))   # Output: 20
 
-ht.insert("apple", 100)   # Cập nhật giá trị của "apple"
-print(ht.get("apple"))    # Output: 100
-
-ht.delete("banana")
-# print(ht.get("banana")) # Sẽ gây ra KeyError
+if __name__ == "__main__":
+    main()

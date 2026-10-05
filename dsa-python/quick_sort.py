@@ -1,33 +1,45 @@
-def quick_sort(arr, low=None, high=None):
-    if low is None:
-        low = 0
-    if high is None:
-        high = len(arr) - 1
+"""In-place quick sort with a three-way partition for duplicate values."""
 
-    if low < high:
-        pivot_index = partition(arr, low, high)
-        
-        quick_sort(arr, low, pivot_index - 1) 
-        quick_sort(arr, pivot_index + 1, high)  
-    
-    return arr
 
-def partition(arr, low, high):
-    pivot = arr[high]
+def _partition(values: list[int], low: int, high: int) -> tuple[int, int]:
+    pivot = values[(low + high) // 2]
+    lower = current = low
+    upper = high
 
-    i = low - 1
+    while current <= upper:
+        if values[current] < pivot:
+            values[lower], values[current] = values[current], values[lower]
+            lower += 1
+            current += 1
+        elif values[current] > pivot:
+            values[current], values[upper] = values[upper], values[current]
+            upper -= 1
+        else:
+            current += 1
+    return lower, upper
 
-    for j in range(low, high):
 
-        if arr[j] <= pivot:
-            i += 1
-            arr[i], arr[j] = arr[j], arr[i]
+def quick_sort(values: list[int]) -> list[int]:
+    """Sort values in place; duplicate-heavy inputs avoid repeated partitions."""
 
-    arr[i + 1], arr[high] = arr[high], arr[i + 1]
+    def sort_range(low: int, high: int) -> None:
+        while low < high:
+            equal_start, equal_end = _partition(values, low, high)
+            if equal_start - low < high - equal_end:
+                sort_range(low, equal_start - 1)
+                low = equal_end + 1
+            else:
+                sort_range(equal_end + 1, high)
+                high = equal_start - 1
 
-    return i + 1
+    sort_range(0, len(values) - 1)
+    return values
 
-# Example usage
-arr = [10, 80, 30, 90, 40, 50, 70]
-sorted_arr = quick_sort(arr.copy())
-print(sorted_arr)
+
+def main() -> None:
+    values = [10, 80, 30, 90, 40, 50, 70, 40]
+    print(quick_sort(values))
+
+
+if __name__ == "__main__":
+    main()

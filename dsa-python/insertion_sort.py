@@ -1,15 +1,19 @@
-def insertion_sort(array):
-    array_lenght = len(array)
-    
-    for i in range(1, array_lenght):
-        for j in range(i, 0, -1):
-            if array[j-1] <= array[j]:
-                break
-            array[j], array[j-1] = array[j-1], array[j]
-    
-    return array
+"""Stable, in-place insertion sort."""
 
-array = [2, 4, 6, 1, 5]
-sorted_array = insertion_sort(array=array)
 
-print(sorted_array)
+def insertion_sort(values: list[int]) -> list[int]:
+    for index in range(1, len(values)):
+        current = index
+        while current > 0 and values[current - 1] > values[current]:
+            values[current - 1], values[current] = values[current], values[current - 1]
+            current -= 1
+    return values
+
+
+def main() -> None:
+    values = [2, 4, 6, 1, 5]
+    print(insertion_sort(values))
+
+
+if __name__ == "__main__":
+    main()
